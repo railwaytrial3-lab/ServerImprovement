@@ -25,9 +25,15 @@ class DashboardService:
             order_count=Count('id'),
             total_revenue=Sum('payment__amount')
         )
+        
+        order_count = agg['order_count'] or 0
+        total_revenue = float(agg['total_revenue'] or 0.0)
+        average_order_value = round(total_revenue / order_count, 2) if order_count > 0 else 0.0
+        
         return {
-            'order_count': agg['order_count'] or 0,
-            'total_revenue': float(agg['total_revenue'] or 0.0)
+            'order_count': order_count,
+            'total_revenue': total_revenue,
+            'average_order_value': average_order_value
         }
 
     def _get_daily_chart(self, today_start):
@@ -179,18 +185,21 @@ class DashboardService:
                 "today_vs_yesterday": {
                     "order_count_change_percentage": self._calculate_change_percentage(today_stats['order_count'], yesterday_stats['order_count']),
                     "revenue_change_percentage": self._calculate_change_percentage(today_stats['total_revenue'], yesterday_stats['total_revenue']),
+                    "aov_change_percentage": self._calculate_change_percentage(today_stats['average_order_value'], yesterday_stats['average_order_value']),
                 },
                 "this_week": this_week_stats,
                 "last_week": last_week_stats,
                 "this_week_vs_last_week": {
                     "order_count_change_percentage": self._calculate_change_percentage(this_week_stats['order_count'], last_week_stats['order_count']),
                     "revenue_change_percentage": self._calculate_change_percentage(this_week_stats['total_revenue'], last_week_stats['total_revenue']),
+                    "aov_change_percentage": self._calculate_change_percentage(this_week_stats['average_order_value'], last_week_stats['average_order_value']),
                 },
                 "this_month": this_month_stats,
                 "last_month": last_month_stats,
                 "this_month_vs_last_month": {
                     "order_count_change_percentage": self._calculate_change_percentage(this_month_stats['order_count'], last_month_stats['order_count']),
                     "revenue_change_percentage": self._calculate_change_percentage(this_month_stats['total_revenue'], last_month_stats['total_revenue']),
+                    "aov_change_percentage": self._calculate_change_percentage(this_month_stats['average_order_value'], last_month_stats['average_order_value']),
                 }
             },
             "charts": {
