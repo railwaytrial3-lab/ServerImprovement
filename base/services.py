@@ -208,3 +208,38 @@ class DashboardService:
                 "monthly": self._get_monthly_chart(this_month_start)
             }
         }
+
+class StockService:
+    LOW_STOCK_THRESHOLD = 5
+
+    @classmethod
+    def check_and_notify_low_stock(cls, variant):
+        """
+        Check if variant stock dropped to threshold.
+        Sends a Telegram alert and creates an In-App Admin Notification.
+        """
+        from base.models import AdminNotification
+        from base.utils import send_telegram_notification
+        
+        if variant.stock <= cls.LOW_STOCK_THRESHOLD and not variant.low_stock_notified:
+            # 1. Update DB to prevent spam
+            variant.low_stock_notified = True
+            variant.save(update_fields=['low_stock_notified'])
+            
+            # 2. Create In-App Notification
+            msg = f"Low Stock Alert: {variant.product.name} - {variant.volume} has only {variant.stock} left!"
+            AdminNotification.objects.create(message=msg)
+            
+            # 3. Send Telegram Notification
+            telegram_msg = (
+                f"🚨 <b>LOW STOCK ALERT!</b> 🚨\n\n"
+                f"📦 <b>Product:</b> {variant.product.name}\n"
+                f"📏 <b>Volume:</b> {variant.volume}\n"
+                f"⚠️ <b>Remaining Stock:</b> {variant.stock}\n\n"
+                f"Please restock soon."
+            )
+            try:
+                send_telegram_notification(telegram_msg)
+            except Exception as e:
+                print(f"Failed to send telegram notification: {e}")
+

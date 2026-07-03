@@ -23,6 +23,7 @@ admin.site.register(models.OrderItem)
 admin.site.register(models.Payment)
 admin.site.register(models.Cart)
 admin.site.register(models.CartItem)
+admin.site.register(models.AdminNotification)
 admin.site.register(models.Governorate)
 
 @admin.register(models.Product)

@@ -559,9 +559,12 @@ def place_order(request):
     # --- 5. COD vs ONLINE PAYMENT ---
     if payment_method == 'cod':
         # COD: Deduct stock, clear cart, create Payment, keep status "pending"
+        from base.services import StockService
         for item in prefetched_items:
             item.variant.stock = F('stock') - item.quantity
             item.variant.save()
+            item.variant.refresh_from_db()
+            StockService.check_and_notify_low_stock(item.variant)
 
         cart.items.all().delete()
 
@@ -930,9 +933,12 @@ def paymob_webhook(request):
                         order.status = 'paid'
                         order.save()
                         
+                        from base.services import StockService
                         for item in order.items.select_related('variant'):
                             item.variant.stock = F('stock') - item.quantity
                             item.variant.save()
+                            item.variant.refresh_from_db()
+                            StockService.check_and_notify_low_stock(item.variant)
                             
                         clear_cart_for_order(order)
                         
@@ -1818,3 +1824,27 @@ class AdminDashboardAnalyticsView(APIView):
         service = DashboardService()
         data = service.get_dashboard_analytics()
         return Response(data)
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def get_admin_notifications(request):
+    notifications = models.AdminNotification.objects.all()[:20]
+    data = []
+    for n in notifications:
+        data.append({
+            "id": n.id,
+            "message": n.message,
+            "is_read": n.is_read,
+            "created_at": n.created_at
+        })
+    return Response(data)
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def mark_notifications_read(request, pk=None):
+    if pk:
+        models.AdminNotification.objects.filter(pk=pk, is_read=False).update(is_read=True)
+        return Response({"message": _("Notification marked as read")})
+    else:
+        models.AdminNotification.objects.filter(is_read=False).update(is_read=True)
+        return Response({"message": _("All notifications marked as read")})

@@ -150,6 +150,7 @@ class ProductVariant(models.Model):
 
     # ... stock fields ...
     stock = models.PositiveIntegerField(default=0)
+    low_stock_notified = models.BooleanField(default=False, help_text="True if a low stock alert has already been sent.")
 
 
     @property
@@ -184,6 +185,12 @@ class ProductVariant(models.Model):
     class Meta:
         unique_together = ('product', 'volume')
 
+    def save(self, *args, **kwargs):
+        # Auto-reset the notification flag if stock is manually replenished above threshold
+        if self.stock > 5 and self.low_stock_notified:
+            self.low_stock_notified = False
+        super().save(*args, **kwargs)
+
 
 class ProductImage(models.Model):
     variant = models.ForeignKey(ProductVariant, related_name='images', on_delete=models.CASCADE)
@@ -200,6 +207,17 @@ class ProductImage(models.Model):
     
 ###################
 
+
+class AdminNotification(models.Model):
+    message = models.CharField(max_length=255)
+    is_read = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{'Read' if self.is_read else 'Unread'}: {self.message}"
 
 class Review(models.Model):
     customer = models.ForeignKey(User,on_delete=models.CASCADE)
