@@ -1,4 +1,6 @@
 import os
+import json
+from google.oauth2 import service_account
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import (
     DateRange,
@@ -11,8 +13,15 @@ from django.conf import settings
 class GoogleAnalyticsService:
     def __init__(self):
         self.property_id = settings.GA4_PROPERTY_ID
-        # The client automatically picks up GOOGLE_APPLICATION_CREDENTIALS from env
-        self.client = BetaAnalyticsDataClient()
+        
+        creds_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
+        if creds_json:
+            creds_info = json.loads(creds_json)
+            credentials = service_account.Credentials.from_service_account_info(creds_info)
+            self.client = BetaAnalyticsDataClient(credentials=credentials)
+        else:
+            # The client automatically picks up GOOGLE_APPLICATION_CREDENTIALS from env locally
+            self.client = BetaAnalyticsDataClient()
 
     def get_active_users(self, days=30):
         """Fetches total active users over the given time period."""
