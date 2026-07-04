@@ -60,12 +60,30 @@ class GoogleAnalyticsService:
             )
             response = self.client.run_report(request)
             
+            import re
+            from base.models import Product
+            
             results = []
             for row in response.rows:
-                results.append({
-                    "path": row.dimension_values[0].value,
-                    "views": int(row.metric_values[0].value)
-                })
+                path = row.dimension_values[0].value
+                views = int(row.metric_values[0].value)
+                
+                item = {
+                    "path": path,
+                    "views": views
+                }
+                
+                # Intercept product pages and attach the real product name
+                match = re.search(r'/product(?:s)?/(\d+)', path)
+                if match:
+                    try:
+                        product_id = int(match.group(1))
+                        product = Product.objects.get(id=product_id)
+                        item["product_name"] = product.name
+                    except Product.DoesNotExist:
+                        item["product_name"] = "Unknown Product"
+                
+                results.append(item)
                 
             # Sort by views descending
             results.sort(key=lambda x: x["views"], reverse=True)
